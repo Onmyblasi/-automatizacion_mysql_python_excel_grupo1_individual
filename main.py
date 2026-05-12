@@ -1,78 +1,91 @@
-from sqlalchemy import create_engine, text
-from config import *
-import pandas as pd
+# main.py
+# ⭐ PUNTO DE ENTRADA PRINCIPAL DEL PROYECTO
+# Ejecuta la automatización completa: MySQL → Python → CSV → Excel
+
+import os
+import sys
+from datetime import datetime
 from pathlib import Path
 
-# 🔹 Configuración
-DATA_DIR = Path(__file__).parent.parent / "data"
+# Agregar la carpeta src al path de Python
+sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-# 🔹 Conexión
-def conection_bd():
-    url_db = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_NAME}"
-    engine = create_engine (url_db)
-    return engine.connect()
+from src.sakila_etl import proceso_completo
+from src.config import EXCEL_FILE, AUTO_OPEN_EXCEL, OUTPUT_FOLDER
 
-
-# 🔹 Test conexión
-def test_connection():
-    connection = conection_bd()
-    try:
-        with connection:
-            print("✅ Conexión exitosa")
-            result = connection.execute(text("SELECT * FROM customer LIMIT 1;"))
-            print(result.fetchone())
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-
-# 🔹 DATAFRAME CLIENTES
-def get_customer_activity():
-    connection = conection_bd()
+def main():
+    """
+    Ejecutar proceso completo de automatización Sakila
     
-    with connection:
-        query = """
-            SELECT
-                c.customer_id,
-                LOWER(c.first_name) AS first_name,
-                LOWER(c.last_name) AS last_name,
-                LOWER(c.email) AS email,
-                ci.city,
-                co.country,
-                r.rental_id,
-                r.rental_date,
-                r.return_date,
-                p.payment_id,
-                p.amount
-            FROM customer c
-            JOIN address a ON c.address_id = a.address_id
-            JOIN city ci ON a.city_id = ci.city_id
-            JOIN country co ON ci.country_id = co.country_id
-            JOIN rental r ON c.customer_id = r.customer_id
-            JOIN payment p ON r.rental_id = p.rental_id
-            WHERE 
-                r.return_date IS NOT NULL
-                AND p.amount > 0;
-        """
+    Flujo:
+    1. Extrae datos de MySQL (base de datos Sakila)
+    2. Transforma los datos con Pandas
+    3. Guarda archivos CSV en carpeta output/
+    4. Abre Excel automáticamente (si está configurado)
+    """
+    print("\n" + "="*50)
+    print("🚀 AUTOMATIZACIÓN SAKILA")
+    print("="*50)
+    print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    # PASO 1: Ejecutar proceso ETL
+    print("PASO 1: Procesando datos de MySQL...\n")
+    if proceso_completo():
+        print("\n✅ Datos procesados exitosamente!")
+        
+        # PASO 2: Abrir Excel si está configurado en .env
+        if AUTO_OPEN_EXCEL:
+            print("\nPASO 2: Abriendo Excel...")
+            # Construir ruta absoluta al archivo Excel
+            excel_path = Path(__file__).parent / EXCEL_FILE
+            if excel_path.exists():
+                try:
+                    os.startfile(str(excel_path))
+                    print(f"✓ Excel abierto: {EXCEL_FILE}")
+                    print("\n💡 Para actualizar los datos en Excel:")
+                    print("   → Presiona F5")
+                    print("   → O: Datos → Actualizar todo")
+                    print("   → O: Clic derecho en tabla → Actualizar")
+                except Exception as e:
+                    print(f"⚠️  No se pudo abrir Excel: {e}")
+            else:
+                print(f"\n⚠️  Archivo Excel no encontrado: {EXCEL_FILE}")
+                print(f"   Crea el archivo en la carpeta 'dashboard/' y vuelve a ejecutar")
+                print(f"\n💡 Ver: dashboard/README.md para instrucciones")
+        
+        # Resumen final
+        print("\n" + "="*50)
+        print("✅ PROCESO COMPLETADO")
+        print("="*50)
+        print(f"\n📂 Archivos generados en '{OUTPUT_FOLDER}/':")
+        print("   • fact_rentas.csv   (tabla de hechos)")
+        print("   • dim_pelicula.csv  (dimensión)")
+        print("   • dim_categoria.csv (dimensión)")
+        print("   • dim_tienda.csv    (dimensión)")
+        print("   • dim_cliente.csv   (dimensión)")
+        print("   • dim_fecha.csv     (dimensión)")
+        print("\n💾 CSVs listos para cargar en Power Query y modelar en Power Pivot")
+        
+    else:
+        print("\n" + "="*50)
+        print("❌ ERROR EN EL PROCESO")
+        print("="*50)
+        print("\n💡 Posibles causas:")
+        print("   1. MySQL no está corriendo")
+        print("   2. Credenciales incorrectas en archivo .env")
+        print("   3. Base de datos 'sakila' no existe")
+        print("\n📖 Ver: README.md sección 'Solución de Problemas'")
+        return False
+    
+    return True
 
-        result = connection.execute(text(query))
-        rows = result.fetchall()
-        columns = result.keys()
-
-        df = pd.DataFrame(rows, columns=columns)
-
-        # Exportar CSV
-        df.to_csv(
-            DATA_DIR/"customer_activity.csv",
-            index=False,
-            encoding="utf-8"
-        )
-
-        print("✅ CSV creado: data/customer_activity.csv")
-
-        return df
-
-
-# 🔹 Ejecutar
 if __name__ == "__main__":
-    test_connection()
-    get_customer_activity()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Proceso interrumpido por el usuario")
+    except Exception as e:
+        print(f"\n\n❌ Error inesperado: {e}")
+        print("📖 Ver: README.md para troubleshooting")
+    finally:
+        input("\n\nPresiona ENTER para salir...")

@@ -9,6 +9,7 @@ __pycache__/
 
 # Entornos virtuales
 venv/
+.venv/
 .env
 
 # Jupyter / Colab
@@ -20,4 +21,3 @@ venv/
 
 # Configuración de IDEs
 .vscode/
-

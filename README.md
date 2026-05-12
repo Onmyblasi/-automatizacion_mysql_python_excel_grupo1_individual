@@ -68,7 +68,19 @@ La arquitectura de este proyecto se seleccionó para maximizar la eficiencia en 
 
 Sigue estos pasos para replicar el entorno localmente:
 
-1.  **Entorno Virtual:** Crea y activa tu entorno virtual para aislar las dependencias del proyecto.
+1.  **Entorno Virtual:** Crea y activa tu entorno virtual para aislar las dependencias del proyecto:
+    *   **Crear:**
+        ```bash
+        python -m venv venv
+        ```
+    *   **Activar (Windows):**
+        ```bash
+        .\venv\Scripts\activate
+        ```
+    *   **Activar (macOS/Linux):**
+        ```bash
+        source venv/bin/activate
+        ```
 2.  **Dependencias:** Instala las librerías necesarias ejecutando:
     ```bash
     pip install -r requirements.txt
